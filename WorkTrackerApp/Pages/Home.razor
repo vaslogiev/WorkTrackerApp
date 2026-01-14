@@ -251,20 +251,24 @@
   private async Task SyncData()
   {
     isSyncing = true;
-    syncMessage = "";
+    syncMessage = "Синхронизиране...";
     try
     {
+      // 1. Изтриваме всички стари записи (за да няма дубликати)
+      // ВНИМАНИЕ: Това работи, ако искаш базата да е точно копие на това, което виждаш на екрана
+      await SupabaseClient.From<DayEntry>().NotEqual("status", -1).Delete();
+
+      // 2. Записваме наново всичко
       if (cloudDays.Any())
       {
-        // Изрично казваме на Upsert да използва колоната 'date' за проверка
-        await SupabaseClient.From<DayEntry>().Upsert(cloudDays);
-
-        syncMessage = "✅ Данните са синхронизирани успешно!";
+        await SupabaseClient.From<DayEntry>().Insert(cloudDays);
       }
+
+      syncMessage = "✅ Успешна синхронизация!";
     }
     catch (Exception ex)
     {
-      syncMessage = "❌ Грешка: Провери конзолата.";
+      syncMessage = "❌ Грешка при запис.";
       Console.WriteLine(ex.Message);
     }
     finally
