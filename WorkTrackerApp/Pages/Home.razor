@@ -3,127 +3,161 @@
 @using Supabase
 @using Postgrest.Attributes
 @using Postgrest.Models
-@using System.Runtime.Serialization
 @inject Supabase.Client SupabaseClient
 
-<div class="container mt-3" style="max-width: 600px;">
-  @* DEBUG ЛЕНТА - показва какво реално се случва *@
-  <div class="alert alert-info small py-1 mb-2">
-    <strong>Последно кликнато:</strong> @lastClickedDate | <strong>Избрани:</strong> @SelectedDates.Count
+<div class="app-container">
+  @* Показваме какво вижда софтуера за тест *@
+  <div class="debug-info">
+    Брой записи в базата: @cloudDays.Count
   </div>
 
   @if (isLoading)
   {
-    <div class="text-center my-5"><div class="spinner-border text-primary"></div></div>
+    <div class="loader">Зареждане...</div>
   }
   else
   {
-    <div class="calendar-container card shadow-sm p-3 mb-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <button class="btn btn-sm btn-outline-primary" @onclick="() => ChangeMonth(-1)">⬅</button>
-        <h4 class="mb-0 text-capitalize">@viewDate.ToString("MMMM yyyy", new CultureInfo("bg-BG"))</h4>
-        <button class="btn btn-sm btn-outline-primary" @onclick="() => ChangeMonth(1)">➡</button>
+    <div class="calendar-card">
+      <div class="calendar-nav">
+        <button @onclick="() => ChangeMonth(-1)">⬅</button>
+        <span>@viewDate.ToString("MMMM yyyy", new CultureInfo("bg-BG"))</span>
+        <button @onclick="() => ChangeMonth(1)">➡</button>
       </div>
 
       <div class="calendar-grid">
-        @foreach (var dayName in new[] { "Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд" })
+        @foreach (var day in new[] { "Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд" })
         {
-          <div class="weekday-header">@dayName</div>
+          <div class="header">@day</div>
         }
-
         @for (int i = 0; i < OffsetDays; i++)
         {
-          <div class="calendar-day empty"></div>
+          <div class="empty"></div>
         }
-
         @foreach (var date in MonthDates)
         {
-          <div class="calendar-day @GetStatusClass(date) @(SelectedDates.Any(d => d.Date == date.Date) ? "selected" : "")"
-               @onclick='() => ToggleSelection(date)'>
+          <div class="day @GetStatusClass(date) @(SelectedDates.Contains(date) ? "selected" : "")"
+               @onclick="() => ToggleSelection(date)">
             @date.Day
           </div>
         }
       </div>
     </div>
 
-    <div class="card shadow-sm p-3 border-0 bg-white mb-4 text-center">
-      <div class="btn-group w-100">
-        <button class="btn btn-warning" @onclick="() => SetStatusForSelected(1)">Изработен</button>
-        <button class="btn btn-success" @onclick="() => SetStatusForSelected(2)">Платен</button>
-        <button class="btn btn-secondary" @onclick="() => SetStatusForSelected(3)">Приключен</button>
-      </div>
-      <button class="btn btn-outline-danger btn-sm mt-2" @onclick="() => SetStatusForSelected(0)">Изчисти избраните</button>
+    <div class="actions">
+      <button class="btn-worked" @onclick="() => SetStatusForSelected(1)">Изработен</button>
+      <button class="btn-paid" @onclick="() => SetStatusForSelected(2)">Платен</button>
+      <button class="btn-done" @onclick="() => SetStatusForSelected(3)">Приключен</button>
+      <button class="btn-clear" @onclick="() => SetStatusForSelected(0)">Изчисти</button>
     </div>
 
-    <button class="btn btn-primary w-100 py-3 shadow-sm" @onclick="SyncData" disabled="@isSyncing">
-      @(isSyncing ? "Синхронизиране..." : "Синхронизирай всичко")
+    <button class="btn-sync" @onclick="SyncData" disabled="@isSyncing">
+      @(isSyncing ? "Синхронизиране..." : "ЗАПАЗИ В ОБЛАКА")
     </button>
-    <p class="text-center mt-2 small">@syncMessage</p>
+    <p class="status-msg">@syncMessage</p>
   }
 </div>
 
 <style>
+  /* Пълно унищожаване на навигацията */
+  ::deep .sidebar, ::deep .top-row, .sidebar, .top-row {
+    display: none !important;
+  }
+
+  .app-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 10px;
+    font-family: sans-serif;
+  }
+
   .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
+    gap: 5px;
+    text-align: center;
   }
 
-  .calendar-day {
-    aspect-ratio: 1/1;
+  .day {
+    padding: 10px 0;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    cursor: pointer;
+    aspect-ratio: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #f0f0f0;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: 0.2s;
+  }
+
+  .header {
+    font-weight: bold;
+    font-size: 0.8rem;
+    padding-bottom: 5px;
   }
 
   .status-worked {
-    background-color: #ffeb3b !important;
+    background: #ffeb3b;
   }
 
   .status-paid {
-    background-color: #4caf50 !important;
+    background: #4caf50;
     color: white;
   }
 
   .status-finished {
-    background-color: #dee2e6 !important;
+    background: #e0e0e0;
   }
 
   .selected {
-    outline: 3px solid #0d6efd;
-    z-index: 10;
+    border: 2px solid #2196f3;
+    box-shadow: 0 0 5px rgba(33,150,243,0.5);
   }
 
-  .empty {
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 20px 0;
+  }
+
+    .actions button {
+      padding: 12px;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+
+  .btn-worked {
+    background: #ffeb3b;
+  }
+
+  .btn-paid {
+    background: #4caf50;
+    color: white;
+  }
+
+  .btn-done {
+    background: #e0e0e0;
+  }
+
+  .btn-clear {
+    background: #ff5252;
+    color: white;
+  }
+
+  .btn-sync {
+    width: 100%;
+    padding: 15px;
+    background: #2196f3;
+    color: white;
     border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
   }
 
-  .weekday-header {
-    text-align: center;
-    font-weight: bold;
-    font-size: 0.8rem;
-    color: #666;
-  }
-
-  /* Smartphone UI Fix: Скриваме навигацията директно тук */
-  .sidebar, .top-row {
-    display: none !important;
-  }
-
-  .page {
-    display: block !important;
-  }
-
-  main {
-    width: 100% !important;
-  }
-
-  .content {
-    padding: 10px !important;
+  .debug-info {
+    font-size: 0.7rem;
+    color: #ccc;
+    margin-bottom: 5px;
   }
 </style>
 
@@ -131,43 +165,29 @@
   [Table("work_days")]
   public class DayEntry : BaseModel
   {
-    [PrimaryKey("date", false)]
-    [Column("date")]
-    public DateTime Date { get; set; }
-
-    [Column("status")]
-    public int StatusInt { get; set; }
+    [PrimaryKey("date", false)][Column("date")] public DateTime Date { get; set; }
+    [Column("status")] public int StatusInt { get; set; }
   }
 
   private List<DayEntry> cloudDays = new();
   private HashSet<DateTime> SelectedDates = new();
   private List<DateTime> MonthDates = new();
-  private DateTime viewDate = DateTime.Now;
+  private DateTime viewDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
   private int OffsetDays;
-  private bool isLoading = true;
-  private bool isSyncing = false;
+  private bool isLoading = true, isSyncing = false;
   private string syncMessage = "";
-  private string lastClickedDate = "";
 
   protected override async Task OnInitializedAsync() { await LoadDataFromCloud(); SetupCalendar(); }
 
   private void SetupCalendar()
   {
     MonthDates.Clear();
-    var firstDay = new DateTime(viewDate.Year, viewDate.Month, 1);
-    OffsetDays = ((int)firstDay.DayOfWeek + 6) % 7;
+    OffsetDays = ((int)viewDate.DayOfWeek + 6) % 7;
     for (int i = 1; i <= DateTime.DaysInMonth(viewDate.Year, viewDate.Month); i++)
-    {
-      // ФИКС: Слагаме 12:00 на обяд, за да не прескача деня при UTC конверсия
-      MonthDates.Add(new DateTime(viewDate.Year, viewDate.Month, i, 12, 0, 0, DateTimeKind.Utc));
-    }
+      MonthDates.Add(new DateTime(viewDate.Year, viewDate.Month, i));
   }
 
-  private void ChangeMonth(int step)
-  {
-    viewDate = viewDate.AddMonths(step);
-    SetupCalendar();
-  }
+  private void ChangeMonth(int step) { viewDate = viewDate.AddMonths(step); SetupCalendar(); }
 
   private async Task LoadDataFromCloud()
   {
@@ -175,42 +195,35 @@
     try
     {
       var response = await SupabaseClient.From<DayEntry>().Get();
-      cloudDays = response.Models;
+      // ТУК Е МАГИЯТА: Добавяме +1 ден към всичко, което идва от базата
+      cloudDays = response.Models.Select(d =>
+      {
+        d.Date = d.Date.AddDays(1).Date;
+        return d;
+      }).ToList();
     }
-    catch (Exception) { }
+    catch { }
     finally { isLoading = false; StateHasChanged(); }
   }
 
   private void ToggleSelection(DateTime date)
   {
-    lastClickedDate = date.ToString("yyyy-MM-dd");
-    // Сравняваме само Date компонента за по-сигурно
-    var existing = SelectedDates.FirstOrDefault(d => d.Date == date.Date);
-    if (existing != default) SelectedDates.Remove(existing);
-    else SelectedDates.Add(date);
+    if (!SelectedDates.Remove(date)) SelectedDates.Add(date);
   }
 
   private async Task SetStatusForSelected(int newStatus)
   {
     foreach (var date in SelectedDates)
     {
-      var targetDate = new DateTime(date.Year, date.Month, date.Day, 12, 0, 0, DateTimeKind.Utc);
-      var existing = cloudDays.FirstOrDefault(d => d.Date.Date == targetDate.Date);
-
+      var existing = cloudDays.FirstOrDefault(d => d.Date.Date == date.Date);
       if (newStatus == 0)
       {
-        if (existing != null)
-        {
-          cloudDays.Remove(existing);
-          try { await SupabaseClient.From<DayEntry>().Filter("date", Postgrest.Constants.Operator.Equals, targetDate.ToString("yyyy-MM-dd")).Delete(); } catch { }
-        }
+        if (existing != null) cloudDays.Remove(existing);
       }
       else
       {
-        var day = new DayEntry { Date = targetDate, StatusInt = newStatus };
-        if (existing != null) cloudDays.Remove(existing);
-        cloudDays.Add(day);
-        try { await SupabaseClient.From<DayEntry>().Upsert(day); } catch { }
+        if (existing != null) existing.StatusInt = newStatus;
+        else cloudDays.Add(new DayEntry { Date = date.Date, StatusInt = newStatus });
       }
     }
     SelectedDates.Clear();
@@ -220,17 +233,19 @@
   private async Task SyncData()
   {
     isSyncing = true;
-    syncMessage = "Синхронизиране...";
+    syncMessage = "Записване...";
     try
     {
+      // Трием всичко и записваме наново - най-сигурният начин
       await SupabaseClient.From<DayEntry>().Filter("date", Postgrest.Constants.Operator.NotEqual, "1900-01-01").Delete();
       if (cloudDays.Any())
       {
+        // Когато записваме, библиотеката автоматично ще свали 2 часа (т.е. ще стане -1 ден в базата)
         await SupabaseClient.From<DayEntry>().Insert(cloudDays);
-        syncMessage = "Успешно синхронизирано!";
       }
+      syncMessage = "✅ Успех!";
     }
-    catch (Exception) { syncMessage = "Грешка при запис"; }
+    catch { syncMessage = "❌ Грешка"; }
     finally { isSyncing = false; StateHasChanged(); }
   }
 
@@ -240,6 +255,6 @@
         1 => "status-worked",
         2 => "status-paid",
         3 => "status-finished",
-        _ => "status-none"
+        _ => ""
       };
 }
