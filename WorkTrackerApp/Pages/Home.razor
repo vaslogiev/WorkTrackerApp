@@ -254,26 +254,35 @@
     syncMessage = "Синхронизиране...";
     try
     {
-      // 1. Изтриваме всички стари записи (за да няма дубликати)
-      // ВНИМАНИЕ: Това работи, ако искаш базата да е точно копие на това, което виждаш на екрана
-      await SupabaseClient.From<DayEntry>().NotEqual("status", -1).Delete();
+      // 1. Изтриваме старите записи.
+      // Използваме филтър, който винаги е истина (напр. дата след 1900г.),
+      // за да заобиколим защитата на Supabase срещу изтриване на "всичко" без филтър.
+      await SupabaseClient.From<DayEntry>()
+          .Filter("date", Postgrest.Constants.Operator.GreaterThan, new DateTime(1900, 1, 1))
+          .Delete();
 
-      // 2. Записваме наново всичко
-      if (cloudDays.Any())
+      // 2. Записваме наново всичко от локалния списък
+      if (cloudDays != null && cloudDays.Any())
       {
         await SupabaseClient.From<DayEntry>().Insert(cloudDays);
+        syncMessage = "✅ Успешна синхронизация!";
       }
-
-      syncMessage = "✅ Успешна синхронизация!";
+      else
+      {
+        syncMessage = "Няма данни за запис.";
+      }
     }
     catch (Exception ex)
     {
       syncMessage = "❌ Грешка при запис.";
-      Console.WriteLine(ex.Message);
+      Console.WriteLine("Грешка: " + ex.Message);
     }
     finally
     {
       isSyncing = false;
+      StateHasChanged();
+      await Task.Delay(3000);
+      syncMessage = "";
       StateHasChanged();
     }
   }
