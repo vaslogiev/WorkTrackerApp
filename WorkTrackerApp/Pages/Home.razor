@@ -115,15 +115,15 @@
   {
     [PrimaryKey("date", false)]
     [Column("date")]
-    public string Date { get; set; } = ""; // Fix: Инициализираме, за да няма nullable warning
+    public DateTime Date { get; set; } // Връщаме го на DateTime, но с "буфер"
 
     [Column("status")]
     public int StatusInt { get; set; }
   }
 
   private List<DayEntry> cloudDays = new();
-  private HashSet<string> SelectedDates = new();
-  private List<string> MonthDatesStrings = new();
+  private HashSet<DateTime> SelectedDates = new();
+  private List<DateTime> MonthDates = new(); // Работим с обекти за UI
   private DateTime viewDate = DateTime.Now;
   private int OffsetDays;
   private bool isLoading = true;
@@ -135,13 +135,16 @@
 
   private void SetupCalendar()
   {
-    MonthDatesStrings.Clear();
+    MonthDates.Clear();
     var firstDay = new DateTime(viewDate.Year, viewDate.Month, 1);
     OffsetDays = ((int)firstDay.DayOfWeek + 6) % 7;
+
     for (int i = 1; i <= DateTime.DaysInMonth(viewDate.Year, viewDate.Month); i++)
     {
-      var d = new DateTime(viewDate.Year, viewDate.Month, i);
-      MonthDatesStrings.Add(d.ToString("yyyy-MM-dd"));
+      // КЛЮЧЪТ: Генерираме датата точно в 12:00:00 на обяд.
+      // Така дори -2 часа отместване ще даде 10:00:00 СЪЩИЯ ДЕН.
+      var d = new DateTime(viewDate.Year, viewDate.Month, i, 12, 0, 0, DateTimeKind.Utc);
+      MonthDates.Add(d);
     }
   }
 
@@ -153,37 +156,47 @@
     try
     {
       var response = await SupabaseClient.From<DayEntry>().Get();
-      cloudDays = response.Models;
+      // Когато зареждаме, нормализираме всичко към обяд, за да съвпадат
+      cloudDays = response.Models.Select(d =>
+      {
+        d.Date = new DateTime(d.Date.Year, d.Date.Month, d.Date.Day, 12, 0, 0, DateTimeKind.Utc);
+        return d;
+      }).ToList();
     }
-    catch (Exception) { /* Мълчаливо игнорираме ex */ }
+    catch (Exception) { }
     finally { isLoading = false; StateHasChanged(); }
   }
 
-  private void ToggleSelection(string dateStr)
+  private void ToggleSelection(DateTime date)
   {
-    lastClickedDate = dateStr;
-    if (!SelectedDates.Remove(dateStr)) SelectedDates.Add(dateStr);
+    lastClickedDate = date.ToString("yyyy-MM-dd");
+    // Сравняваме само дата
+    var existing = SelectedDates.FirstOrDefault(d => d.Date == date.Date);
+    if (existing != default) SelectedDates.Remove(existing);
+    else SelectedDates.Add(date);
   }
 
   private async Task SetStatusForSelected(int newStatus)
   {
-    foreach (var dateStr in SelectedDates)
+    foreach (var date in SelectedDates)
     {
-      var existing = cloudDays.FirstOrDefault(d => d.Date == dateStr);
+      var targetDate = new DateTime(date.Year, date.Month, date.Day, 12, 0, 0, DateTimeKind.Utc);
+      var existing = cloudDays.FirstOrDefault(d => d.Date.Date == targetDate.Date);
+
       if (newStatus == 0)
       {
         if (existing != null)
         {
           cloudDays.Remove(existing);
-          try { await SupabaseClient.From<DayEntry>().Filter("date", Postgrest.Constants.Operator.Equals, dateStr).Delete(); } catch { }
+          await SupabaseClient.From<DayEntry>().Filter("date", Postgrest.Constants.Operator.Equals, targetDate.ToString("yyyy-MM-dd")).Delete();
         }
       }
       else
       {
-        var day = new DayEntry { Date = dateStr, StatusInt = newStatus };
+        var day = new DayEntry { Date = targetDate, StatusInt = newStatus };
         if (existing != null) cloudDays.Remove(existing);
         cloudDays.Add(day);
-        try { await SupabaseClient.From<DayEntry>().Upsert(day); } catch { }
+        await SupabaseClient.From<DayEntry>().Upsert(day);
       }
     }
     SelectedDates.Clear();
@@ -196,7 +209,6 @@
     syncMessage = "Синхронизиране...";
     try
     {
-      // Fix: Използваме 'NotEqual' вместо 'NotEquals'
       await SupabaseClient.From<DayEntry>().Filter("date", Postgrest.Constants.Operator.NotEqual, "1900-01-01").Delete();
       if (cloudDays.Any())
       {
@@ -204,12 +216,12 @@
         syncMessage = "Успешно!";
       }
     }
-    catch (Exception) { syncMessage = "Грешка при синхронизация"; }
+    catch (Exception) { syncMessage = "Грешка"; }
     finally { isSyncing = false; StateHasChanged(); }
   }
 
-  private string GetStatusClass(string dateStr) =>
-      cloudDays.FirstOrDefault(d => d.Date == dateStr)?.StatusInt switch
+  private string GetStatusClass(DateTime date) =>
+      cloudDays.FirstOrDefault(d => d.Date.Date == date.Date)?.StatusInt switch
       {
         1 => "status-worked",
         2 => "status-paid",
