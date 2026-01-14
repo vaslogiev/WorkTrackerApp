@@ -175,17 +175,24 @@
         SetupCalendar();
     }
 
-    private async Task LoadDataFromCloud()
+  private async Task LoadDataFromCloud()
+  {
+    isLoading = true; // Започваме зареждане
+    try
     {
-        isLoading = true;
-        try
-        {
-            var response = await SupabaseClient.From<DayEntry>().Get();
-            cloudDays = response.Models;
-        }
-        catch (Exception ex) { Console.WriteLine("Грешка при зареждане: " + ex.Message); }
-        finally { isLoading = false; }
+      var response = await SupabaseClient.From<DayEntry>().Get();
+      cloudDays = response.Models;
     }
+    catch (Exception ex)
+    {
+      Console.WriteLine("Грешка при зареждане: " + ex.Message);
+    }
+    finally
+    {
+      isLoading = false; // ТОВА Е ВАЖНО: Винаги спираме лоудера тук
+      StateHasChanged(); // Принудително обновяване на интерфейса
+    }
+  }
 
     private async Task SyncData()
     {
