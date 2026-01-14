@@ -127,11 +127,8 @@
   public class DayEntry : BaseModel
   {
     [PrimaryKey("date", false)]
-    [Column("date")]
-    public DateTime Date { get; set; }
-
-    [Column("status")]
-    public int StatusInt { get; set; }
+    [Column("date")] public DateTime Date { get; set; }
+    [Column("status")] public int StatusInt { get; set; }
 
     [IgnoreDataMember]
     public DayStatus Status
@@ -148,38 +145,24 @@
   private List<DateTime> MonthDates = new();
   private DateTime viewDate = DateTime.Now;
   private int OffsetDays;
-
   private decimal rateFull = 140;
   private decimal ratePart = 90;
-
   private bool isLoading = true;
   private bool isSyncing = false;
   private string syncMessage = "";
 
-  protected override async Task OnInitializedAsync()
-  {
-    await LoadDataFromCloud();
-    SetupCalendar();
-  }
+  protected override async Task OnInitializedAsync() { await LoadDataFromCloud(); SetupCalendar(); }
 
   private void SetupCalendar()
   {
     MonthDates.Clear();
     var firstDay = new DateTime(viewDate.Year, viewDate.Month, 1);
     OffsetDays = ((int)firstDay.DayOfWeek + 6) % 7;
-    var daysInMonth = DateTime.DaysInMonth(viewDate.Year, viewDate.Month);
-    for (int i = 1; i <= daysInMonth; i++)
-    {
-      // Използваме чиста дата без никаква информация за зона
-      MonthDates.Add(new DateTime(viewDate.Year, viewDate.Month, i, 0, 0, 0, DateTimeKind.Unspecified));
-    }
+    for (int i = 1; i <= DateTime.DaysInMonth(viewDate.Year, viewDate.Month); i++)
+      MonthDates.Add(new DateTime(viewDate.Year, viewDate.Month, i).Date);
   }
 
-  private void ChangeMonth(int step)
-  {
-    viewDate = viewDate.AddMonths(step);
-    SetupCalendar();
-  }
+  private void ChangeMonth(int step) { viewDate = viewDate.AddMonths(step); SetupCalendar(); }
 
   private async Task LoadDataFromCloud()
   {
@@ -187,19 +170,11 @@
     try
     {
       var response = await SupabaseClient.From<DayEntry>().Get();
-      // Взимаме само чистата дата от базата, за да нямаме отмествания при рефреш
-      cloudDays = response.Models.Select(d =>
-      {
-        d.Date = d.Date.Date;
-        return d;
-      }).ToList();
+      // Тук ги четем директно - ако в базата пише 25-ти, ще зареди 25-ти
+      cloudDays = response.Models.Select(d => { d.Date = d.Date.Date; return d; }).ToList();
     }
-    catch (Exception ex) { Console.WriteLine("Грешка при зареждане: " + ex.Message); }
-    finally
-    {
-      isLoading = false;
-      StateHasChanged();
-    }
+    catch (Exception ex) { Console.WriteLine(ex.Message); }
+    finally { isLoading = false; StateHasChanged(); }
   }
 
   private async Task SyncData()
@@ -208,101 +183,64 @@
     syncMessage = "Синхронизиране...";
     try
     {
-      // 1. Изтриваме всичко
-      await SupabaseClient.From<DayEntry>()
-          .Where(x => x.Date > new DateTime(1900, 1, 1))
-          .Delete();
+      await SupabaseClient.From<DayEntry>().Where(x => x.Date > new DateTime(1900, 1, 1)).Delete();
 
       if (cloudDays.Any())
       {
-        // 2. Подготвяме за запис с БУФЕР 05:00 сутринта
-        // Дори системата да извади 2-3 часа за UTC, пак оставаме в същия ден
-        var daysToSync = cloudDays.Select(d => new DayEntry
+        // МАГИЯТА: Добавяме +1 ден преди да пратим към облака
+        var shiftedDays = cloudDays.Select(d => new DayEntry
           {
-            Date = new DateTime(d.Date.Year, d.Date.Month, d.Date.Day, 5, 0, 0, DateTimeKind.Unspecified),
+            Date = d.Date.AddDays(1),
             Status = d.Status
           }).ToList();
 
-        await SupabaseClient.From<DayEntry>().Insert(daysToSync);
-        syncMessage = "✅ Синхронизирано успешно!";
+        await SupabaseClient.From<DayEntry>().Insert(shiftedDays);
+        syncMessage = "✅ Готово!";
       }
     }
-    catch (Exception ex)
-    {
-      syncMessage = "❌ Грешка при запис.";
-      Console.WriteLine("Sync Error: " + ex.Message);
-    }
-    finally
-    {
-      isSyncing = false;
-      StateHasChanged();
-      await Task.Delay(3000);
-      syncMessage = "";
-      StateHasChanged();
-    }
-  }
-
-  private string GetStatusClass(DateTime date)
-  {
-    var day = cloudDays.FirstOrDefault(d => d.Date.Date == date.Date);
-    return day?.Status switch
-    {
-      DayStatus.Worked => "status-worked",
-      DayStatus.Paid => "status-paid",
-      DayStatus.Finished => "status-finished",
-      _ => "status-none"
-    };
-  }
-
-  private void ToggleSelection(DateTime date)
-  {
-    var targetDate = date.Date;
-    if (SelectedDates.Contains(targetDate)) SelectedDates.Remove(targetDate);
-    else SelectedDates.Add(targetDate);
+    catch (Exception ex) { syncMessage = "❌ Грешка"; Console.WriteLine(ex.Message); }
+    finally { isSyncing = false; StateHasChanged(); }
   }
 
   private async Task SetStatusForSelected(DayStatus newStatus)
   {
     foreach (var date in SelectedDates)
     {
-      var targetDate = date.Date;
-      var existing = cloudDays.FirstOrDefault(d => d.Date.Date == targetDate);
-
+      var existing = cloudDays.FirstOrDefault(d => d.Date.Date == date.Date);
       if (newStatus == DayStatus.None)
       {
         if (existing != null)
         {
           cloudDays.Remove(existing);
-          try
-          {
-            // Триене с филтър за точно този ден
-            await SupabaseClient.From<DayEntry>()
-                .Filter("date", Postgrest.Constants.Operator.Equals, targetDate.ToString("yyyy-MM-dd"))
-                .Delete();
-          }
-          catch { }
+          // При триене също добавяме +1 ден, за да уцелим грешния запис
+          await SupabaseClient.From<DayEntry>().Where(x => x.Date == date.AddDays(1)).Delete();
         }
       }
       else
       {
-        // Локално състояние
-        var day = new DayEntry { Date = targetDate, Status = newStatus };
+        var day = new DayEntry { Date = date.Date, Status = newStatus };
         if (existing != null) cloudDays.Remove(existing);
         cloudDays.Add(day);
 
-        // В базата - със същия буфер 05:00
-        var cloudEntry = new DayEntry
-          {
-            Date = new DateTime(targetDate.Year, targetDate.Month, targetDate.Day, 5, 0, 0, DateTimeKind.Unspecified),
-            Status = newStatus
-          };
-        try { await SupabaseClient.From<DayEntry>().Upsert(cloudEntry); } catch { }
+        // При Upsert - също +1 ден
+        var cloudDay = new DayEntry { Date = date.AddDays(1), Status = newStatus };
+        await SupabaseClient.From<DayEntry>().Upsert(cloudDay);
       }
     }
     SelectedDates.Clear();
     StateHasChanged();
   }
 
+  private string GetStatusClass(DateTime date) =>
+      cloudDays.FirstOrDefault(d => d.Date.Date == date.Date)?.Status switch
+      {
+        DayStatus.Worked => "status-worked",
+        DayStatus.Paid => "status-paid",
+        DayStatus.Finished => "status-finished",
+        _ => "status-none"
+      };
+
+  private void ToggleSelection(DateTime date) { if (!SelectedDates.Remove(date.Date)) SelectedDates.Add(date.Date); }
   private void ClearSelection() => SelectedDates.Clear();
   private int WorkedCount => cloudDays.Count(d => d.Status == DayStatus.Worked);
   private int NotFinishedCount => cloudDays.Count(d => d.Status == DayStatus.Worked || d.Status == DayStatus.Paid);
