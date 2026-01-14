@@ -126,9 +126,13 @@
   [Table("work_days")]
   public class DayEntry : BaseModel
   {
+    // ПРОМЯНА: Използваме string, за да убием часовите зони веднъж завинаги
     [PrimaryKey("date", false)]
-    [Column("date")] public DateTime Date { get; set; }
-    [Column("status")] public int StatusInt { get; set; }
+    [Column("date")]
+    public string Date { get; set; }
+
+    [Column("status")]
+    public int StatusInt { get; set; }
 
     [IgnoreDataMember]
     public DayStatus Status
@@ -170,8 +174,7 @@
     try
     {
       var response = await SupabaseClient.From<DayEntry>().Get();
-      // Тук ги четем директно - ако в базата пише 25-ти, ще зареди 25-ти
-      cloudDays = response.Models.Select(d => { d.Date = d.Date.Date; return d; }).ToList();
+      cloudDays = response.Models;
     }
     catch (Exception ex) { Console.WriteLine(ex.Message); }
     finally { isLoading = false; StateHasChanged(); }
@@ -183,22 +186,17 @@
     syncMessage = "Синхронизиране...";
     try
     {
-      await SupabaseClient.From<DayEntry>().Where(x => x.Date > new DateTime(1900, 1, 1)).Delete();
+      // Използваме днешната дата като стринг за сигурност при филтъра
+      await SupabaseClient.From<DayEntry>().Where(x => x.Date != "1900-01-01").Delete();
 
       if (cloudDays.Any())
       {
-        // МАГИЯТА: Добавяме +1 ден преди да пратим към облака
-        var shiftedDays = cloudDays.Select(d => new DayEntry
-          {
-            Date = d.Date.AddDays(1),
-            Status = d.Status
-          }).ToList();
-
-        await SupabaseClient.From<DayEntry>().Insert(shiftedDays);
-        syncMessage = "✅ Готово!";
+        // Пращаме чисти стрингове - Supabase няма да ги пипне!
+        await SupabaseClient.From<DayEntry>().Insert(cloudDays);
+        syncMessage = "✅ Синхронизирано успешно!";
       }
     }
-    catch (Exception ex) { syncMessage = "❌ Грешка"; Console.WriteLine(ex.Message); }
+    catch (Exception ex) { syncMessage = "❌ Грешка при запис."; }
     finally { isSyncing = false; StateHasChanged(); }
   }
 
@@ -206,39 +204,40 @@
   {
     foreach (var date in SelectedDates)
     {
-      var existing = cloudDays.FirstOrDefault(d => d.Date.Date == date.Date);
+      string dateStr = date.ToString("yyyy-MM-dd"); // Превръщаме в текст тук
+      var existing = cloudDays.FirstOrDefault(d => d.Date == dateStr);
+
       if (newStatus == DayStatus.None)
       {
         if (existing != null)
         {
           cloudDays.Remove(existing);
-          // При триене също добавяме +1 ден, за да уцелим грешния запис
-          await SupabaseClient.From<DayEntry>().Where(x => x.Date == date.AddDays(1)).Delete();
+          await SupabaseClient.From<DayEntry>().Where(x => x.Date == dateStr).Delete();
         }
       }
       else
       {
-        var day = new DayEntry { Date = date.Date, Status = newStatus };
+        var day = new DayEntry { Date = dateStr, Status = newStatus };
         if (existing != null) cloudDays.Remove(existing);
         cloudDays.Add(day);
-
-        // При Upsert - също +1 ден
-        var cloudDay = new DayEntry { Date = date.AddDays(1), Status = newStatus };
-        await SupabaseClient.From<DayEntry>().Upsert(cloudDay);
+        await SupabaseClient.From<DayEntry>().Upsert(day);
       }
     }
     SelectedDates.Clear();
     StateHasChanged();
   }
 
-  private string GetStatusClass(DateTime date) =>
-      cloudDays.FirstOrDefault(d => d.Date.Date == date.Date)?.Status switch
-      {
-        DayStatus.Worked => "status-worked",
-        DayStatus.Paid => "status-paid",
-        DayStatus.Finished => "status-finished",
-        _ => "status-none"
-      };
+  private string GetStatusClass(DateTime date)
+  {
+    string dateStr = date.ToString("yyyy-MM-dd");
+    return cloudDays.FirstOrDefault(d => d.Date == dateStr)?.Status switch
+    {
+      DayStatus.Worked => "status-worked",
+      DayStatus.Paid => "status-paid",
+      DayStatus.Finished => "status-finished",
+      _ => "status-none"
+    };
+  }
 
   private void ToggleSelection(DateTime date) { if (!SelectedDates.Remove(date.Date)) SelectedDates.Add(date.Date); }
   private void ClearSelection() => SelectedDates.Clear();
