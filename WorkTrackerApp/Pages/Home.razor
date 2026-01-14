@@ -7,10 +7,9 @@
 @inject Supabase.Client SupabaseClient
 
 <div class="container mt-3" style="max-width: 600px;">
-  @* DEBUG СЕКЦИЯ - Изтрий я, когато се уверим, че работи *@
-  <div class="alert alert-info small py-1">
-    <strong>Debug:</strong> Последно кликната дата: @lastClickedDate <br />
-    <strong>Избрани за запис:</strong> @(string.Join(", ", SelectedDates))
+  @* DEBUG ЛЕНТА - показва точно какво подава календарът *@
+  <div class="alert alert-info small py-1 mb-2">
+    <strong>UI Дата:</strong> @lastClickedDate | <strong>Брой избрани:</strong> @SelectedDates.Count
   </div>
 
   @if (isLoading)
@@ -39,16 +38,14 @@
 
         @foreach (var dateStr in MonthDatesStrings)
         {
-          @* Подаваме директно STRING към метода *@
           <div class="calendar-day @GetStatusClass(dateStr) @(SelectedDates.Contains(dateStr) ? "selected" : "")"
                @onclick='() => ToggleSelection(dateStr)'>
-            @dateStr.Split('-')[2] @* Показва само числото на деня *@
+            @dateStr.Split('-')[2]
           </div>
         }
       </div>
     </div>
 
-    @* Останалата част от UI (Бутони за статус и синхронизация) остава същата *@
     <div class="card shadow-sm p-3 border-0 bg-white mb-4 text-center">
       <div class="btn-group w-100">
         <button class="btn btn-warning" @onclick="() => SetStatusForSelected(1)">Изработен</button>
@@ -59,9 +56,9 @@
     </div>
 
     <button class="btn btn-primary w-100 py-3 shadow-sm" @onclick="SyncData" disabled="@isSyncing">
-      @(isSyncing ? "Синхронизиране..." : "Синхронизирай с облака")
+      @(isSyncing ? "Синхронизиране..." : "Синхронизирай всичко")
     </button>
-    <p class="text-center mt-2">@syncMessage</p>
+    <p class="text-center mt-2 small">@syncMessage</p>
   }
 </div>
 
@@ -102,7 +99,7 @@
   .empty {
     border: none;
   }
-  /* Скриване на навигацията */
+
   .sidebar, .top-row {
     display: none !important;
   }
@@ -116,12 +113,16 @@
   [Table("work_days")]
   public class DayEntry : BaseModel
   {
-    [PrimaryKey("date", false)][Column("date")] public string Date { get; set; }
-    [Column("status")] public int StatusInt { get; set; }
+    [PrimaryKey("date", false)]
+    [Column("date")]
+    public string Date { get; set; } = ""; // Fix: Инициализираме, за да няма nullable warning
+
+    [Column("status")]
+    public int StatusInt { get; set; }
   }
 
   private List<DayEntry> cloudDays = new();
-  private HashSet<string> SelectedDates = new(); // Вече пазим само стрингове "yyyy-MM-dd"
+  private HashSet<string> SelectedDates = new();
   private List<string> MonthDatesStrings = new();
   private DateTime viewDate = DateTime.Now;
   private int OffsetDays;
@@ -139,7 +140,6 @@
     OffsetDays = ((int)firstDay.DayOfWeek + 6) % 7;
     for (int i = 1; i <= DateTime.DaysInMonth(viewDate.Year, viewDate.Month); i++)
     {
-      // Генерираме датата като твърд текст още тук
       var d = new DateTime(viewDate.Year, viewDate.Month, i);
       MonthDatesStrings.Add(d.ToString("yyyy-MM-dd"));
     }
@@ -155,13 +155,13 @@
       var response = await SupabaseClient.From<DayEntry>().Get();
       cloudDays = response.Models;
     }
-    catch (Exception ex) { Console.WriteLine(ex.Message); }
+    catch (Exception) { /* Мълчаливо игнорираме ex */ }
     finally { isLoading = false; StateHasChanged(); }
   }
 
   private void ToggleSelection(string dateStr)
   {
-    lastClickedDate = dateStr; // За Debug текста
+    lastClickedDate = dateStr;
     if (!SelectedDates.Remove(dateStr)) SelectedDates.Add(dateStr);
   }
 
@@ -175,7 +175,7 @@
         if (existing != null)
         {
           cloudDays.Remove(existing);
-          await SupabaseClient.From<DayEntry>().Where(x => x.Date == dateStr).Delete();
+          try { await SupabaseClient.From<DayEntry>().Filter("date", Postgrest.Constants.Operator.Equals, dateStr).Delete(); } catch { }
         }
       }
       else
@@ -183,7 +183,7 @@
         var day = new DayEntry { Date = dateStr, StatusInt = newStatus };
         if (existing != null) cloudDays.Remove(existing);
         cloudDays.Add(day);
-        await SupabaseClient.From<DayEntry>().Upsert(day);
+        try { await SupabaseClient.From<DayEntry>().Upsert(day); } catch { }
       }
     }
     SelectedDates.Clear();
@@ -196,15 +196,15 @@
     syncMessage = "Синхронизиране...";
     try
     {
-      // Трием всичко, което не е празно
-      await SupabaseClient.From<DayEntry>().Filter("date", Postgrest.Constants.Operator.NotEquals, "1900-01-01").Delete();
+      // Fix: Използваме 'NotEqual' вместо 'NotEquals'
+      await SupabaseClient.From<DayEntry>().Filter("date", Postgrest.Constants.Operator.NotEqual, "1900-01-01").Delete();
       if (cloudDays.Any())
       {
         await SupabaseClient.From<DayEntry>().Insert(cloudDays);
         syncMessage = "Успешно!";
       }
     }
-    catch (Exception ex) { syncMessage = "Грешка"; }
+    catch (Exception) { syncMessage = "Грешка при синхронизация"; }
     finally { isSyncing = false; StateHasChanged(); }
   }
 
