@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "WorkTrackerApp",
   "resources": {
-    "hash": "sha256-Q5d9VSLwiEZeaVX54uMM95OW+upp/GeGNGAuSic8FAw=",
+    "hash": "sha256-BetVxZ7b9rGy5/JA6pIRb3eFMAI8ZUoNwpPggqXS11o=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-vtotCeXt2UD6oc459laJT32vBgigZ+eLoUmdeFkvYDk="
     },
@@ -105,7 +105,7 @@
       "System.wasm": "sha256-I4hhyMuUoHdrzDopL9tlnkL/Skg+0OO+gmkOXNT3dcg=",
       "netstandard.wasm": "sha256-CeK9rE+W3puTb9gzqJn943cU6/w0+Qq83ib6q/y0h4U=",
       "System.Private.CoreLib.wasm": "sha256-d2ZiaMv3Fk1imHxCgIrfH41rygRi3o041U/QsLqDcMI=",
-      "WorkTrackerApp.wasm": "sha256-WFMHS/kyGypW6JffKDmKQswu+JfaNpEw+bY30O42aKA="
+      "WorkTrackerApp.wasm": "sha256-2DhzFcSvUFNrmlXgExavvkD91wDnTdaAjBpxt3hebpM="
     }
   },
   "cacheBootResources": true,
