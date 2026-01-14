@@ -1,5 +1,5 @@
 self.assetsManifest = {
-  "version": "LDNd41eA",
+  "version": "bqOQucTl",
   "assets": [
     {
       "hash": "sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
@@ -18,7 +18,7 @@ self.assetsManifest = {
       "url": "_framework/Microsoft.AspNetCore.Components.WebAssembly.wasm"
     },
     {
-      "hash": "sha256-RTptn4E47wcSh452wT1NcsMLn4scdrieUFXLeHMPn4c=",
+      "hash": "sha256-4xKr/QpAxc7iyx6nQ1wC5H4oD2AeJ3BXPYxdS7dOZew=",
       "url": "_framework/Microsoft.AspNetCore.Components.wasm"
     },
     {
@@ -354,11 +354,11 @@ self.assetsManifest = {
       "url": "_framework/Websocket.Client.wasm"
     },
     {
-      "hash": "sha256-y84PHPkf5AxAhMyk+Q9lJuQMoy7ibdaHsBZRhmpTerg=",
+      "hash": "sha256-WFMHS/kyGypW6JffKDmKQswu+JfaNpEw+bY30O42aKA=",
       "url": "_framework/WorkTrackerApp.wasm"
     },
     {
-      "hash": "sha256-UlANWYSCaFMO+GEX9TvivcC9VSd3to+WdWvYRBqFzbc=",
+      "hash": "sha256-K/8wDy8inK2O4pC1jNiIeP/xjurRrWiGOO2wLuATpBE=",
       "url": "_framework/blazor.boot.json"
     },
     {

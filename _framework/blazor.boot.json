@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "WorkTrackerApp",
   "resources": {
-    "hash": "sha256-VeKi/3jWx9UREYHACt5xzmbqZ/2148uQNC5WCSPPVIk=",
+    "hash": "sha256-Q5d9VSLwiEZeaVX54uMM95OW+upp/GeGNGAuSic8FAw=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-vtotCeXt2UD6oc459laJT32vBgigZ+eLoUmdeFkvYDk="
     },
@@ -20,7 +20,7 @@
     "assembly": {
       "Supabase.Functions.wasm": "sha256-cAmNEcl3ZkcTAcSFQY9ViicWaBQnCMxJGk7fcpxTwAg=",
       "Supabase.Gotrue.wasm": "sha256-bf2WisBxiP8MBpC7eizQaUk7GK19mH68RvIIIMZGLis=",
-      "Microsoft.AspNetCore.Components.wasm": "sha256-RTptn4E47wcSh452wT1NcsMLn4scdrieUFXLeHMPn4c=",
+      "Microsoft.AspNetCore.Components.wasm": "sha256-4xKr/QpAxc7iyx6nQ1wC5H4oD2AeJ3BXPYxdS7dOZew=",
       "Microsoft.AspNetCore.Components.Web.wasm": "sha256-29A5T2mBi8Opu0v8fQj0AiMc3lNSvlJbnHcuKv8MSgw=",
       "Microsoft.AspNetCore.Components.WebAssembly.wasm": "sha256-+obN4SMkT2OxPdYWLDT9GVfMQizSilYNiWq+pB+Yz2o=",
       "Microsoft.Extensions.Configuration.wasm": "sha256-od574rRtVVRJj+24jbl8j3GdQFpxlJOpSx+pEMw1Q18=",
@@ -105,7 +105,7 @@
       "System.wasm": "sha256-I4hhyMuUoHdrzDopL9tlnkL/Skg+0OO+gmkOXNT3dcg=",
       "netstandard.wasm": "sha256-CeK9rE+W3puTb9gzqJn943cU6/w0+Qq83ib6q/y0h4U=",
       "System.Private.CoreLib.wasm": "sha256-d2ZiaMv3Fk1imHxCgIrfH41rygRi3o041U/QsLqDcMI=",
-      "WorkTrackerApp.wasm": "sha256-y84PHPkf5AxAhMyk+Q9lJuQMoy7ibdaHsBZRhmpTerg="
+      "WorkTrackerApp.wasm": "sha256-WFMHS/kyGypW6JffKDmKQswu+JfaNpEw+bY30O42aKA="
     }
   },
   "cacheBootResources": true,
