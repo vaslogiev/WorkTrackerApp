@@ -1,11 +1,9 @@
 ﻿@page "/"
 @using System.Globalization
 @using Supabase
-@using Postgrest
 @using Postgrest.Attributes
 @using Postgrest.Models
 @using System.Runtime.Serialization
-@using static Postgrest.Constants // Добавяме 'static' тук
 @inject Supabase.Client SupabaseClient
 
 <PageTitle>Работен Календар</PageTitle>
@@ -23,13 +21,13 @@
         <div class="card shadow-sm p-3 border-0 bg-light mb-4">
             <div class="stats-results">
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="h6 mb-0">За разплащане:</span>
-                    <span class="h6 mb-0 text-primary"><strong>@(WorkedCount * ratePart) лв. (@WorkedCount дни)</strong></span>
+                    <span class="h5 mb-0">За разплащане:</span>
+                    <span class="h5 mb-0 text-primary"><strong>@(WorkedCount * ratePart) лв. (@WorkedCount дни)</strong></span>
                 </div>
                 <hr />
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="h6 mb-0">За получаване:</span>
-                    <span class="h6 mb-0 text-warning"><strong>@(NotFinishedCount * rateFull) лв. (@NotFinishedCount дни)</strong></span>
+                    <span class="h5 mb-0">За получаване:</span>
+                    <span class="h5 mb-0 text-warning"><strong>@(NotFinishedCount * rateFull) лв. (@NotFinishedCount дни)</strong></span>
                 </div>
             </div>
         </div>
@@ -185,10 +183,7 @@
             var response = await SupabaseClient.From<DayEntry>().Get();
             cloudDays = response.Models;
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Грешка при зареждане: " + ex.Message);
-        }
+        catch (Exception ex) { Console.WriteLine(ex.Message); }
         finally
         {
             isLoading = false;
@@ -196,25 +191,37 @@
         }
     }
 
-  private async Task SyncData()
-  {
-    isSyncing = true;
-    syncMessage = "Синхронизиране...";
-    StateHasChanged();
-
-    try
+    private async Task SyncData()
     {
-      // Използваме директно Operator.GreaterThan благодарение на 'using static'
-      await SupabaseClient.From<DayEntry>()
-          .Filter("date", Operator.GreaterThan, new DateTime(1900, 1, 1))
-          .Delete();
+        isSyncing = true;
+        syncMessage = "Синхронизиране...";
+        try
+        {
+            // Триене на всичко през GreaterThan с DateTime
+            await SupabaseClient.From<DayEntry>()
+                .Where(x => x.Date > new DateTime(1900, 1, 1))
+                .Delete();
 
-      if (cloudDays != null && cloudDays.Any())
-      {
-        await SupabaseClient.From<DayEntry>().Insert(cloudDays);
-        syncMessage = "✅ Синхронизирано успешно!";
-      }
-      // ... останалата част от кода остава същата
+            if (cloudDays.Any())
+            {
+                await SupabaseClient.From<DayEntry>().Insert(cloudDays);
+                syncMessage = "✅ Синхронизирано успешно!";
+            }
+        }
+        catch (Exception ex)
+        {
+            syncMessage = "❌ Грешка при запис.";
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isSyncing = false;
+            StateHasChanged();
+            await Task.Delay(3000);
+            syncMessage = "";
+            StateHasChanged();
+        }
+    }
 
     private string GetStatusClass(DateTime date)
     {
@@ -230,10 +237,8 @@
 
     private void ToggleSelection(DateTime date)
     {
-        if (SelectedDates.Contains(date.Date))
-            SelectedDates.Remove(date.Date);
-        else
-            SelectedDates.Add(date.Date);
+        if (SelectedDates.Contains(date.Date)) SelectedDates.Remove(date.Date);
+        else SelectedDates.Add(date.Date);
     }
 
     private async Task SetStatusForSelected(DayStatus newStatus)
@@ -241,14 +246,12 @@
         foreach (var date in SelectedDates)
         {
             var existing = cloudDays.FirstOrDefault(d => d.Date.Date == date.Date);
-
             if (newStatus == DayStatus.None)
             {
                 if (existing != null)
                 {
                     cloudDays.Remove(existing);
-                    // Директно изтриване от базата, за да не чакаме бутона Sync
-                    try { await SupabaseClient.From<DayEntry>().Where(x => x.Date == date).Delete(); } catch {}
+                    try { await SupabaseClient.From<DayEntry>().Where(x => x.Date == date).Delete(); } catch { }
                 }
             }
             else
@@ -256,9 +259,7 @@
                 var day = new DayEntry { Date = date, Status = newStatus };
                 if (existing != null) cloudDays.Remove(existing);
                 cloudDays.Add(day);
-                
-                // Използваме Upsert за индивидуални промени
-                try { await SupabaseClient.From<DayEntry>().Upsert(day); } catch {}
+                try { await SupabaseClient.From<DayEntry>().Upsert(day); } catch { }
             }
         }
         SelectedDates.Clear();
@@ -266,7 +267,6 @@
     }
 
     private void ClearSelection() => SelectedDates.Clear();
-
     private int WorkedCount => cloudDays.Count(d => d.Status == DayStatus.Worked);
     private int NotFinishedCount => cloudDays.Count(d => d.Status == DayStatus.Worked || d.Status == DayStatus.Paid);
 }
