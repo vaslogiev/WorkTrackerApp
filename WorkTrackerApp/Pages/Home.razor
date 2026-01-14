@@ -170,8 +170,8 @@
     var daysInMonth = DateTime.DaysInMonth(viewDate.Year, viewDate.Month);
     for (int i = 1; i <= daysInMonth; i++)
     {
-      // Винаги работим с чиста дата (00:00) в интерфейса
-      MonthDates.Add(new DateTime(viewDate.Year, viewDate.Month, i).Date);
+      // Използваме чиста дата без никаква информация за зона
+      MonthDates.Add(new DateTime(viewDate.Year, viewDate.Month, i, 0, 0, 0, DateTimeKind.Unspecified));
     }
   }
 
@@ -187,14 +187,14 @@
     try
     {
       var response = await SupabaseClient.From<DayEntry>().Get();
-      // Важно: При зареждане взимаме само Date частта
+      // Взимаме само чистата дата от базата, за да нямаме отмествания при рефреш
       cloudDays = response.Models.Select(d =>
       {
         d.Date = d.Date.Date;
         return d;
       }).ToList();
     }
-    catch (Exception ex) { Console.WriteLine(ex.Message); }
+    catch (Exception ex) { Console.WriteLine("Грешка при зареждане: " + ex.Message); }
     finally
     {
       isLoading = false;
@@ -208,17 +208,18 @@
     syncMessage = "Синхронизиране...";
     try
     {
-      // 1. Първо чистим старите записи
+      // 1. Изтриваме всичко
       await SupabaseClient.From<DayEntry>()
           .Where(x => x.Date > new DateTime(1900, 1, 1))
           .Delete();
 
       if (cloudDays.Any())
       {
-        // 2. Подготвяме данните за запис - слагаме ги на 12:00 часа на обяд
+        // 2. Подготвяме за запис с БУФЕР 05:00 сутринта
+        // Дори системата да извади 2-3 часа за UTC, пак оставаме в същия ден
         var daysToSync = cloudDays.Select(d => new DayEntry
           {
-            Date = new DateTime(d.Date.Year, d.Date.Month, d.Date.Day, 12, 0, 0, DateTimeKind.Utc),
+            Date = new DateTime(d.Date.Year, d.Date.Month, d.Date.Day, 5, 0, 0, DateTimeKind.Unspecified),
             Status = d.Status
           }).ToList();
 
@@ -243,7 +244,6 @@
 
   private string GetStatusClass(DateTime date)
   {
-    // Сравняваме само Date компонента
     var day = cloudDays.FirstOrDefault(d => d.Date.Date == date.Date);
     return day?.Status switch
     {
@@ -273,12 +273,11 @@
         if (existing != null)
         {
           cloudDays.Remove(existing);
-          // Трием директно с филтър за дата
           try
           {
+            // Триене с филтър за точно този ден
             await SupabaseClient.From<DayEntry>()
-                .Filter("date", Postgrest.Constants.Operator.GreaterThanOrEqual, targetDate.Date)
-                .Filter("date", Postgrest.Constants.Operator.LessThan, targetDate.Date.AddDays(1))
+                .Filter("date", Postgrest.Constants.Operator.Equals, targetDate.ToString("yyyy-MM-dd"))
                 .Delete();
           }
           catch { }
@@ -286,15 +285,15 @@
       }
       else
       {
-        // Записваме локално на 00:00 за лесно сравнение
+        // Локално състояние
         var day = new DayEntry { Date = targetDate, Status = newStatus };
         if (existing != null) cloudDays.Remove(existing);
         cloudDays.Add(day);
 
-        // Записваме в облака на 12:00 за сигурност
+        // В базата - със същия буфер 05:00
         var cloudEntry = new DayEntry
           {
-            Date = new DateTime(targetDate.Year, targetDate.Month, targetDate.Day, 12, 0, 0, DateTimeKind.Utc),
+            Date = new DateTime(targetDate.Year, targetDate.Month, targetDate.Day, 5, 0, 0, DateTimeKind.Unspecified),
             Status = newStatus
           };
         try { await SupabaseClient.From<DayEntry>().Upsert(cloudEntry); } catch { }
