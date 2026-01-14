@@ -1,0 +1,271 @@
+﻿@page "/"
+@using System.Globalization
+@using Supabase
+@using Postgrest.Attributes
+@using Postgrest.Models
+@using System.Runtime.Serialization
+@inject Supabase.Client SupabaseClient
+
+<PageTitle>Работен Календар</PageTitle>
+
+<div class="container mt-3" style="max-width: 600px;">
+  @if (isLoading)
+  {
+    <div class="text-center my-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p>Зареждане на данни...</p>
+    </div>
+  }
+  else
+  {
+    <div class="card shadow-sm p-3 border-0 bg-light mb-4">
+      <div class="stats-results">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="h5 mb-0">За разплащане:</span>
+          <span class="h5 mb-0 text-primary"><strong>@(WorkedCount * ratePart) (@WorkedCount дни)</strong></span>
+        </div>
+        <hr />
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="h5 mb-0">За получаване:</span>
+          <span class="h5 mb-0 text-warning"><strong>@(NotFinishedCount * rateFull) (@NotFinishedCount дни)</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="calendar-container card shadow-sm p-3 mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <button class="btn btn-sm btn-outline-primary" @onclick="() => ChangeMonth(-1)">⬅</button>
+        <h4 class="mb-0 text-capitalize">@viewDate.ToString("MMMM yyyy", new CultureInfo("bg-BG"))</h4>
+        <button class="btn btn-sm btn-outline-primary" @onclick="() => ChangeMonth(1)">➡</button>
+      </div>
+
+      <div class="calendar-grid">
+        @foreach (var dayName in new[] { "Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд" })
+        {
+          <div class="weekday-header">@dayName</div>
+        }
+
+        @for (int i = 0; i < OffsetDays; i++)
+        {
+          <div class="calendar-day empty"></div>
+        }
+
+        @foreach (var date in MonthDates)
+        {
+          <div class="calendar-day @GetStatusClass(date) @(SelectedDates.Contains(date) ? "selected" : "")"
+               @onclick="() => ToggleSelection(date)">
+            @date.Day
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="card shadow-sm p-3 border-0 bg-white mb-4">
+      <h6 class="text-muted mb-3 text-center">Избрани дни: @SelectedDates.Count</h6>
+      <div class="btn-group w-100 mb-2">
+        <button class="btn btn-warning py-2" @onclick="() => SetStatusForSelected(DayStatus.Worked)">Изработен</button>
+        <button class="btn btn-success py-2" @onclick="() => SetStatusForSelected(DayStatus.Paid)">Платен</button>
+        <button class="btn btn-secondary py-2" @onclick="() => SetStatusForSelected(DayStatus.Finished)">Приключен</button>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-danger w-100 btn-sm" @onclick="() => SetStatusForSelected(DayStatus.None)">❌ Изчисти</button>
+        <button class="btn btn-light w-100 btn-sm border" @onclick="ClearSelection">Откажи избор</button>
+      </div>
+    </div>
+
+    <div class="card shadow-sm p-3 border-0 bg-light mb-5">
+      <div class="row g-3">
+        <div class="col-6">
+          <label class="small fw-bold text-muted">Частична ставка:</label>
+          <input type="number" class="form-control" @bind="ratePart" @bind:event="oninput" />
+        </div>
+        <div class="col-6">
+          <label class="small fw-bold text-muted">Ставка:</label>
+          <input type="number" class="form-control" @bind="rateFull" @bind:event="oninput" />
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+<style>
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+
+  .weekday-header {
+    font-weight: bold;
+    text-align: center;
+    color: #888;
+    padding-bottom: 5px;
+    font-size: 0.9rem;
+  }
+
+  .calendar-day {
+    aspect-ratio: 1/1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 1rem;
+  }
+
+    .calendar-day:hover {
+      background-color: #f8f9fa;
+      transform: scale(1.05);
+    }
+
+  .status-none {
+    background-color: #fff;
+  }
+
+  .status-worked {
+    background-color: #ffeb3b;
+    border-color: #fdd835;
+    font-weight: bold;
+  }
+
+  .status-paid {
+    background-color: #4caf50;
+    color: white;
+    border-color: #43a047;
+  }
+
+  .status-finished {
+    background-color: #dee2e6;
+    color: #adb5bd;
+    border: none;
+  }
+
+  .selected {
+    outline: 3px solid #0d6efd;
+    outline-offset: 1px;
+    z-index: 5;
+    box-shadow: 0 0 10px rgba(13, 110, 253, 0.3);
+  }
+
+  .empty {
+    border: none;
+    cursor: default;
+  }
+</style>
+
+@code {
+  [Table("work_days")]
+  public class DayEntry : BaseModel
+  {
+    [PrimaryKey("date", false)]
+    [Column("date")] public DateTime Date { get; set; }
+    [Column("status")] public int StatusInt { get; set; }
+
+    [IgnoreDataMember]
+    public DayStatus Status
+    {
+      get => (DayStatus)StatusInt;
+      set => StatusInt = (int)value;
+    }
+  }
+
+  public enum DayStatus { None = 0, Worked = 1, Paid = 2, Finished = 3 }
+
+  private List<DayEntry> cloudDays = new();
+  private HashSet<DateTime> SelectedDates = new();
+  private List<DateTime> MonthDates = new();
+  private DateTime viewDate = DateTime.Now;
+  private int OffsetDays;
+
+  private decimal rateFull = 140;
+  private decimal ratePart = 90;
+
+  private bool isLoading = true;
+
+  protected override async Task OnInitializedAsync()
+  {
+    await LoadDataFromCloud();
+    SetupCalendar();
+  }
+
+  private void SetupCalendar()
+  {
+    MonthDates.Clear();
+    var firstDay = new DateTime(viewDate.Year, viewDate.Month, 1);
+    OffsetDays = ((int)firstDay.DayOfWeek + 6) % 7;
+    var daysInMonth = DateTime.DaysInMonth(viewDate.Year, viewDate.Month);
+    for (int i = 1; i <= daysInMonth; i++)
+      MonthDates.Add(new DateTime(viewDate.Year, viewDate.Month, i));
+  }
+
+  private void ChangeMonth(int step)
+  {
+    viewDate = viewDate.AddMonths(step);
+    SetupCalendar();
+  }
+
+  private async Task LoadDataFromCloud()
+  {
+    isLoading = true;
+    try
+    {
+      var response = await SupabaseClient.From<DayEntry>().Get();
+      cloudDays = response.Models;
+    }
+    catch (Exception ex) { Console.WriteLine("Грешка: " + ex.Message); }
+    isLoading = false;
+  }
+
+  private string GetStatusClass(DateTime date)
+  {
+    var day = cloudDays.FirstOrDefault(d => d.Date.Date == date.Date);
+    return day?.Status switch
+    {
+      DayStatus.Worked => "status-worked",
+      DayStatus.Paid => "status-paid",
+      DayStatus.Finished => "status-finished",
+      _ => "status-none"
+    };
+  }
+
+  private void ToggleSelection(DateTime date)
+  {
+    if (SelectedDates.Contains(date.Date))
+      SelectedDates.Remove(date.Date);
+    else
+      SelectedDates.Add(date.Date);
+  }
+
+  private async Task SetStatusForSelected(DayStatus newStatus)
+  {
+    foreach (var date in SelectedDates)
+    {
+      var existing = cloudDays.FirstOrDefault(d => d.Date.Date == date.Date);
+
+      if (newStatus == DayStatus.None)
+      {
+        if (existing != null)
+        {
+          cloudDays.Remove(existing);
+          await SupabaseClient.From<DayEntry>().Where(x => x.Date == date).Delete();
+        }
+      }
+      else
+      {
+        var day = new DayEntry { Date = date, Status = newStatus };
+        if (existing != null) cloudDays.Remove(existing);
+        cloudDays.Add(day);
+        await SupabaseClient.From<DayEntry>().Upsert(day);
+      }
+    }
+    SelectedDates.Clear();
+    StateHasChanged();
+  }
+
+  private void ClearSelection() => SelectedDates.Clear();
+
+  private int WorkedCount => cloudDays.Count(d => d.Status == DayStatus.Worked);
+  private int NotFinishedCount => cloudDays.Count(d => d.Status == DayStatus.Worked || d.Status == DayStatus.Paid);
+}
