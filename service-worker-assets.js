@@ -1,6 +1,10 @@
 self.assetsManifest = {
-  "version": "6UlXQBSG",
+  "version": "LDNd41eA",
   "assets": [
+    {
+      "hash": "sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+      "url": ".nojekyll"
+    },
     {
       "hash": "sha256-vVDTr0mn6AHiGE46tctLQSpThLFgWmgG9NFoHVftsNo=",
       "url": "WorkTrackerApp.styles.css"
@@ -350,11 +354,11 @@ self.assetsManifest = {
       "url": "_framework/Websocket.Client.wasm"
     },
     {
-      "hash": "sha256-dLYe2k4CyCJlXuh2fZN2w7uvkkYC7O2YWc5Vsxis3ZQ=",
+      "hash": "sha256-y84PHPkf5AxAhMyk+Q9lJuQMoy7ibdaHsBZRhmpTerg=",
       "url": "_framework/WorkTrackerApp.wasm"
     },
     {
-      "hash": "sha256-X0RYDc0JIPkj7JtzZ83IIdI5Gt7vD6UfeR6DgVvNuk0=",
+      "hash": "sha256-UlANWYSCaFMO+GEX9TvivcC9VSd3to+WdWvYRBqFzbc=",
       "url": "_framework/blazor.boot.json"
     },
     {
