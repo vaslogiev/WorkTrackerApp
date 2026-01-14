@@ -4,8 +4,8 @@
 @using Postgrest
 @using Postgrest.Attributes
 @using Postgrest.Models
-@using Postgrest.Constants
 @using System.Runtime.Serialization
+@using static Postgrest.Constants // Добавяме 'static' тук
 @inject Supabase.Client SupabaseClient
 
 <PageTitle>Работен Календар</PageTitle>
@@ -196,46 +196,25 @@
         }
     }
 
-    private async Task SyncData()
+  private async Task SyncData()
+  {
+    isSyncing = true;
+    syncMessage = "Синхронизиране...";
+    StateHasChanged();
+
+    try
     {
-        isSyncing = true;
-        syncMessage = "Синхронизиране...";
-        StateHasChanged();
+      // Използваме директно Operator.GreaterThan благодарение на 'using static'
+      await SupabaseClient.From<DayEntry>()
+          .Filter("date", Operator.GreaterThan, new DateTime(1900, 1, 1))
+          .Delete();
 
-        try
-        {
-            // 1. Изтриваме съществуващите записи чрез широк филтър (дата след 1900г)
-            // Това гарантира, че няма да има конфликти при вкарването на нови данни.
-            await SupabaseClient.From<DayEntry>()
-                .Filter("date", Postgrest.Constants.Operator.GreaterThan, new DateTime(1900, 1, 1))
-                .Delete();
-
-            // 2. Инсталираме текущото състояние на cloudDays
-            if (cloudDays != null && cloudDays.Any())
-            {
-                await SupabaseClient.From<DayEntry>().Insert(cloudDays);
-                syncMessage = "✅ Синхронизирано успешно!";
-            }
-            else
-            {
-                syncMessage = "Няма данни за запис.";
-            }
-        }
-        catch (Exception ex)
-        {
-            syncMessage = "❌ Грешка при запис.";
-            Console.WriteLine("Грешка при синхронизация: " + ex.Message);
-        }
-        finally
-        {
-            isSyncing = false;
-            StateHasChanged();
-            
-            await Task.Delay(3000);
-            syncMessage = "";
-            StateHasChanged();
-        }
-    }
+      if (cloudDays != null && cloudDays.Any())
+      {
+        await SupabaseClient.From<DayEntry>().Insert(cloudDays);
+        syncMessage = "✅ Синхронизирано успешно!";
+      }
+      // ... останалата част от кода остава същата
 
     private string GetStatusClass(DateTime date)
     {
