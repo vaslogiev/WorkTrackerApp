@@ -1,5 +1,5 @@
 self.assetsManifest = {
-  "version": "zfhYYt88",
+  "version": "8gOuYTAE",
   "assets": [
     {
       "hash": "sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
@@ -354,11 +354,11 @@ self.assetsManifest = {
       "url": "_framework/Websocket.Client.wasm"
     },
     {
-      "hash": "sha256-LMKPLLCDM/tRBU0g4YEG+DGwWndndJY4Vnkv/Q28txw=",
+      "hash": "sha256-oPfIxlIgKQh3dGm2JNzbVBPmh8uI8YoQSEdZQy0RsyY=",
       "url": "_framework/WorkTrackerApp.wasm"
     },
     {
-      "hash": "sha256-MMgRRyZnyzrpUV6SHIkIBS7Uafyi0fcweniJ0eBMaqE=",
+      "hash": "sha256-enlvOXWAsRvTbp6/Izpc8TH4FOx/k+nta36dqBOIy+s=",
       "url": "_framework/blazor.boot.json"
     },
     {
@@ -382,16 +382,8 @@ self.assetsManifest = {
       "url": "_framework/dotnet.runtime.js"
     },
     {
-      "hash": "sha256-SZLtQnRc0JkwqHab0VUVP7T3uBPSeYzxzDnpxPpUnHk=",
-      "url": "_framework/icudt_CJK.dat"
-    },
-    {
-      "hash": "sha256-8fItetYY8kQ0ww6oxwTLiT3oXlBwHKumbeP2pRF4yTc=",
-      "url": "_framework/icudt_EFIGS.dat"
-    },
-    {
-      "hash": "sha256-L7sV7NEYP37/Qr2FPCePo5cJqRgTXRwGHuwF5Q+0Nfs=",
-      "url": "_framework/icudt_no_CJK.dat"
+      "hash": "sha256-tO5O5YzMTVSaKBboxAqezOQL9ewmupzV2JrB5Rkc8a4=",
+      "url": "_framework/icudt.dat"
     },
     {
       "hash": "sha256-CeK9rE+W3puTb9gzqJn943cU6/w0+Qq83ib6q/y0h4U=",
