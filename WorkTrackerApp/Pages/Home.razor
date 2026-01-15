@@ -6,22 +6,41 @@
 @inject Supabase.Client SupabaseClient
 
 <div class="app-container">
-  @* Показваме какво вижда софтуера за тест *@
-  <div class="debug-info">
-    Брой записи в базата: @cloudDays.Count
+  @* СЕКЦИЯ ЗА СТАВКИ *@
+  <div class="card shadow-sm p-3 mb-3 border-0 bg-light">
+    <h6 class="mb-3 fw-bold">Настройки на ставките</h6>
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="small text-muted">Пълна (Изработен)</label>
+        <div class="input-group input-group-sm">
+          <input type="number" class="form-control" @bind="rateFull">
+          <span class="input-group-text">лв</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="small text-muted">Частична (Платен)</label>
+        <div class="input-group input-group-sm">
+          <input type="number" class="form-control" @bind="ratePart">
+          <span class="input-group-text">лв</span>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-sm btn-dark mt-2 w-100" @onclick="SaveRates" disabled="@isSavingRates">
+      @(isSavingRates ? "Запис..." : "Запази ставките в базата")
+    </button>
   </div>
 
   @if (isLoading)
   {
-    <div class="loader">Зареждане...</div>
+    <div class="text-center my-5"><div class="spinner-border text-primary"></div></div>
   }
   else
   {
-    <div class="calendar-card">
-      <div class="calendar-nav">
-        <button @onclick="() => ChangeMonth(-1)">⬅</button>
-        <span>@viewDate.ToString("MMMM yyyy", new CultureInfo("bg-BG"))</span>
-        <button @onclick="() => ChangeMonth(1)">➡</button>
+    <div class="calendar-card card shadow-sm p-3 mb-4">
+      <div class="calendar-nav d-flex justify-content-between align-items-center mb-3">
+        <button class="btn btn-outline-primary btn-sm" @onclick="() => ChangeMonth(-1)">⬅</button>
+        <h5 class="mb-0 text-capitalize">@viewDate.ToString("MMMM yyyy", new CultureInfo("bg-BG"))</h5>
+        <button class="btn btn-outline-primary btn-sm" @onclick="() => ChangeMonth(1)">➡</button>
       </div>
 
       <div class="calendar-grid">
@@ -43,121 +62,87 @@
       </div>
     </div>
 
-    <div class="actions">
-      <button class="btn-worked" @onclick="() => SetStatusForSelected(1)">Изработен</button>
-      <button class="btn-paid" @onclick="() => SetStatusForSelected(2)">Платен</button>
-      <button class="btn-done" @onclick="() => SetStatusForSelected(3)">Приключен</button>
-      <button class="btn-clear" @onclick="() => SetStatusForSelected(0)">Изчисти</button>
+    <div class="actions d-grid gap-2 mb-4">
+      <div class="btn-group w-100">
+        <button class="btn btn-warning" @onclick="() => SetStatusForSelected(1)">Изработен</button>
+        <button class="btn btn-success" @onclick="() => SetStatusForSelected(2)">Платен</button>
+        <button class="btn btn-secondary" @onclick="() => SetStatusForSelected(3)">Приключен</button>
+      </div>
+      <button class="btn btn-outline-danger btn-sm" @onclick="() => SetStatusForSelected(0)">Изчисти избраните</button>
     </div>
 
-    <button class="btn-sync" @onclick="SyncData" disabled="@isSyncing">
-      @(isSyncing ? "Синхронизиране..." : "ЗАПАЗИ В ОБЛАКА")
+    <div class="stats card p-3 mb-4 bg-primary text-white border-0 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center">
+        <span>Общо за месеца:</span>
+        <span class="h4 mb-0">@CalculateTotal() лв.</span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary w-100 py-3 shadow" @onclick="SyncDays" disabled="@isSyncing">
+      @(isSyncing ? "Синхронизиране..." : "ЗАПАЗИ ДНИТЕ В ОБЛАКА")
     </button>
-    <p class="status-msg">@syncMessage</p>
+    <p class="text-center mt-2 small text-muted">@syncMessage</p>
   }
 </div>
 
 <style>
-  /* Пълно унищожаване на навигацията */
-  ::deep .sidebar, ::deep .top-row, .sidebar, .top-row {
+  ::deep .sidebar, ::deep .top-row {
     display: none !important;
   }
 
   .app-container {
     max-width: 500px;
     margin: 0 auto;
-    padding: 10px;
-    font-family: sans-serif;
+    padding: 15px;
   }
 
   .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 5px;
-    text-align: center;
   }
 
   .day {
-    padding: 10px 0;
-    border: 1px solid #eee;
-    border-radius: 5px;
-    cursor: pointer;
     aspect-ratio: 1;
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
   }
 
   .header {
-    font-weight: bold;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    text-align: center;
+    color: #888;
     padding-bottom: 5px;
   }
 
   .status-worked {
     background: #ffeb3b;
+    border-color: #fdd835;
   }
 
   .status-paid {
     background: #4caf50;
     color: white;
+    border-color: #43a047;
   }
 
   .status-finished {
     background: #e0e0e0;
+    border-color: #bdbdbd;
   }
 
   .selected {
-    border: 2px solid #2196f3;
-    box-shadow: 0 0 5px rgba(33,150,243,0.5);
+    outline: 3px solid #0d6efd;
+    outline-offset: -3px;
   }
 
-  .actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin: 20px 0;
-  }
-
-    .actions button {
-      padding: 12px;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-    }
-
-  .btn-worked {
-    background: #ffeb3b;
-  }
-
-  .btn-paid {
-    background: #4caf50;
-    color: white;
-  }
-
-  .btn-done {
-    background: #e0e0e0;
-  }
-
-  .btn-clear {
-    background: #ff5252;
-    color: white;
-  }
-
-  .btn-sync {
-    width: 100%;
-    padding: 15px;
-    background: #2196f3;
-    color: white;
+  .empty {
     border: none;
-    border-radius: 8px;
-    font-size: 1.1rem;
-  }
-
-  .debug-info {
-    font-size: 0.7rem;
-    color: #ccc;
-    margin-bottom: 5px;
   }
 </style>
 
@@ -169,15 +154,31 @@
     [Column("status")] public int StatusInt { get; set; }
   }
 
+  [Table("settings")]
+  public class SettingEntry : BaseModel
+  {
+    [PrimaryKey("key", false)][Column("key")] public string Key { get; set; } = "";
+    [Column("value")] public decimal Value { get; set; }
+  }
+
   private List<DayEntry> cloudDays = new();
   private HashSet<DateTime> SelectedDates = new();
   private List<DateTime> MonthDates = new();
   private DateTime viewDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
   private int OffsetDays;
-  private bool isLoading = true, isSyncing = false;
+
+  private decimal rateFull = 140;
+  private decimal ratePart = 90;
+
+  private bool isLoading = true, isSyncing = false, isSavingRates = false;
   private string syncMessage = "";
 
-  protected override async Task OnInitializedAsync() { await LoadDataFromCloud(); SetupCalendar(); }
+  protected override async Task OnInitializedAsync()
+  {
+    await LoadRates();
+    await LoadDays();
+    SetupCalendar();
+  }
 
   private void SetupCalendar()
   {
@@ -189,37 +190,60 @@
 
   private void ChangeMonth(int step) { viewDate = viewDate.AddMonths(step); SetupCalendar(); }
 
-  private async Task LoadDataFromCloud()
+  private async Task LoadRates()
+  {
+    try
+    {
+      var response = await SupabaseClient.From<SettingEntry>().Get();
+      var full = response.Models.FirstOrDefault(m => m.Key == "rate_full");
+      if (full != null) rateFull = full.Value;
+      var part = response.Models.FirstOrDefault(m => m.Key == "rate_part");
+      if (part != null) ratePart = part.Value;
+    }
+    catch { }
+  }
+
+  private async Task SaveRates()
+  {
+    isSavingRates = true;
+    try
+    {
+      await SupabaseClient.From<SettingEntry>().Upsert(new SettingEntry { Key = "rate_full", Value = rateFull });
+      await SupabaseClient.From<SettingEntry>().Upsert(new SettingEntry { Key = "rate_part", Value = ratePart });
+      syncMessage = "Ставките са запазени!";
+    }
+    catch { syncMessage = "Грешка при ставките"; }
+    finally { isSavingRates = false; StateHasChanged(); }
+  }
+
+  private async Task LoadDays()
   {
     isLoading = true;
     try
     {
       var response = await SupabaseClient.From<DayEntry>().Get();
-      // ТУК Е МАГИЯТА: Добавяме +1 ден към всичко, което идва от базата
-      cloudDays = response.Models.Select(d =>
-      {
-        d.Date = d.Date.AddDays(1).Date;
-        return d;
-      }).ToList();
+      // Хак за датата +1 ден заради UTC отместването
+      cloudDays = response.Models.Select(d => { d.Date = d.Date.AddDays(1).Date; return d; }).ToList();
     }
     catch { }
     finally { isLoading = false; StateHasChanged(); }
   }
 
-  private void ToggleSelection(DateTime date)
+  private decimal CalculateTotal()
   {
-    if (!SelectedDates.Remove(date)) SelectedDates.Add(date);
+    var workedDays = cloudDays.Count(d => d.Date.Month == viewDate.Month && d.Date.Year == viewDate.Year && d.StatusInt == 1);
+    var paidDays = cloudDays.Count(d => d.Date.Month == viewDate.Month && d.Date.Year == viewDate.Year && d.StatusInt == 2);
+    return (workedDays * rateFull) + (paidDays * ratePart);
   }
+
+  private void ToggleSelection(DateTime date) { if (!SelectedDates.Remove(date)) SelectedDates.Add(date); }
 
   private async Task SetStatusForSelected(int newStatus)
   {
     foreach (var date in SelectedDates)
     {
       var existing = cloudDays.FirstOrDefault(d => d.Date.Date == date.Date);
-      if (newStatus == 0)
-      {
-        if (existing != null) cloudDays.Remove(existing);
-      }
+      if (newStatus == 0) { if (existing != null) cloudDays.Remove(existing); }
       else
       {
         if (existing != null) existing.StatusInt = newStatus;
@@ -230,22 +254,17 @@
     StateHasChanged();
   }
 
-  private async Task SyncData()
+  private async Task SyncDays()
   {
     isSyncing = true;
-    syncMessage = "Записване...";
+    syncMessage = "Записване на дни...";
     try
     {
-      // Трием всичко и записваме наново - най-сигурният начин
       await SupabaseClient.From<DayEntry>().Filter("date", Postgrest.Constants.Operator.NotEqual, "1900-01-01").Delete();
-      if (cloudDays.Any())
-      {
-        // Когато записваме, библиотеката автоматично ще свали 2 часа (т.е. ще стане -1 ден в базата)
-        await SupabaseClient.From<DayEntry>().Insert(cloudDays);
-      }
-      syncMessage = "✅ Успех!";
+      if (cloudDays.Any()) await SupabaseClient.From<DayEntry>().Insert(cloudDays);
+      syncMessage = "✅ Всичко е синхронизирано!";
     }
-    catch { syncMessage = "❌ Грешка"; }
+    catch { syncMessage = "❌ Грешка при запис"; }
     finally { isSyncing = false; StateHasChanged(); }
   }
 
