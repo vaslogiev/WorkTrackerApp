@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "WorkTrackerApp",
   "resources": {
-    "hash": "sha256-EXZ/RJa8ACOY3zM3WH7uWYYjE2IopfW5g+PXN2De8fw=",
+    "hash": "sha256-kIU2dOkX6x+1Hg0WhRDXH/9ycaTIlRlJ0TsCU6KhTMg=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-vtotCeXt2UD6oc459laJT32vBgigZ+eLoUmdeFkvYDk="
     },
@@ -20,7 +20,7 @@
     "assembly": {
       "Supabase.Functions.wasm": "sha256-cAmNEcl3ZkcTAcSFQY9ViicWaBQnCMxJGk7fcpxTwAg=",
       "Supabase.Gotrue.wasm": "sha256-bf2WisBxiP8MBpC7eizQaUk7GK19mH68RvIIIMZGLis=",
-      "Microsoft.AspNetCore.Components.wasm": "sha256-xhn7mNAMzKUVdOybS/9lkYpWu+sgV6H0YI1dL8SWd+k=",
+      "Microsoft.AspNetCore.Components.wasm": "sha256-4xKr/QpAxc7iyx6nQ1wC5H4oD2AeJ3BXPYxdS7dOZew=",
       "Microsoft.AspNetCore.Components.Web.wasm": "sha256-29A5T2mBi8Opu0v8fQj0AiMc3lNSvlJbnHcuKv8MSgw=",
       "Microsoft.AspNetCore.Components.WebAssembly.wasm": "sha256-+obN4SMkT2OxPdYWLDT9GVfMQizSilYNiWq+pB+Yz2o=",
       "Microsoft.Extensions.Configuration.wasm": "sha256-od574rRtVVRJj+24jbl8j3GdQFpxlJOpSx+pEMw1Q18=",
@@ -67,7 +67,7 @@
       "System.IO.Compression.wasm": "sha256-IEW+9bRWbPhMi/X8Ec9ULzkdtLgh0H048lP3SIqzFqw=",
       "System.Linq.Expressions.wasm": "sha256-hMYONgjsIq6PgTdOj8wfa6LX8H27H5JeFtq/XFZdoEk=",
       "System.Linq.Queryable.wasm": "sha256-/yWXJ8NJyANWHZz/isInkAqQ6QzeDpEVPvgGkb2vCRk=",
-      "System.Linq.wasm": "sha256-/tQNLz0XeNpq5gDXeobvYYpd+BH2Bgk8+3XFh+VjIA4=",
+      "System.Linq.wasm": "sha256-4oOtMNzC4L4QiE5/TjbHKIhy0paH34qxhg10ulFGcPQ=",
       "System.Memory.wasm": "sha256-RanWTVC0tYqkDRQFleqWUc0tNGGxnGfRU05DrzmFkT8=",
       "System.Net.Http.wasm": "sha256-o5V+htyuiNh6wU7z7IIh+tU5itz8hn+rCZRHV3qJZJ4=",
       "System.Net.NetworkInformation.wasm": "sha256-88q/6FuIkwA6BfRvcAG9vXJ2GEozSK/Wf8GiAEuoTuo=",
@@ -105,7 +105,7 @@
       "System.wasm": "sha256-I4hhyMuUoHdrzDopL9tlnkL/Skg+0OO+gmkOXNT3dcg=",
       "netstandard.wasm": "sha256-CeK9rE+W3puTb9gzqJn943cU6/w0+Qq83ib6q/y0h4U=",
       "System.Private.CoreLib.wasm": "sha256-6ZFz/zylU1BTFGucNUJhG4fkHC3iP9g60ZHSFvmmjxA=",
-      "WorkTrackerApp.wasm": "sha256-iYwabqdzirjCdEngpw9ODBF8SzIXJ0yIpqVGnq2lEcM="
+      "WorkTrackerApp.wasm": "sha256-S47Z1ZW8UkU7QSkQDLrpSbRfVFMl//sgVmwZZKFfwJo="
     }
   },
   "cacheBootResources": true,
