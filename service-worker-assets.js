@@ -1,5 +1,5 @@
 self.assetsManifest = {
-  "version": "8gOuYTAE",
+  "version": "Tm+DHhPU",
   "assets": [
     {
       "hash": "sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
@@ -354,11 +354,11 @@ self.assetsManifest = {
       "url": "_framework/Websocket.Client.wasm"
     },
     {
-      "hash": "sha256-oPfIxlIgKQh3dGm2JNzbVBPmh8uI8YoQSEdZQy0RsyY=",
+      "hash": "sha256-ZL3QweNknQRw7r7i8Nl4WE62QSo7tzpxse5058kSqvs=",
       "url": "_framework/WorkTrackerApp.wasm"
     },
     {
-      "hash": "sha256-enlvOXWAsRvTbp6/Izpc8TH4FOx/k+nta36dqBOIy+s=",
+      "hash": "sha256-nmvzDVopYL6/2sAaF11J3kvpHSEjrKrM5z8ze1YzKkI=",
       "url": "_framework/blazor.boot.json"
     },
     {
