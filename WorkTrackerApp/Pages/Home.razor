@@ -45,7 +45,7 @@
                 }
                 @foreach (var date in MonthDates)
                 {
-                    <div class="day @GetStatusClass(date) @(SelectedDates.Contains(date) ? "is-selected" : "")"
+                    <div class="day @GetStatusClass(date) @(SelectedDates.Contains(date) ? "is-selected" : "") @(date.Date == DateTime.Today ? "is-today" : "")"
                          @onclick="() => ToggleSelection(date)">
                         @date.Day
                     </div>
@@ -56,8 +56,8 @@
         @* 3. БУТОНИ ЗА ОТБЕЛЯЗВАНЕ *@
         <div class="action-grid mb-3">
             <button class="act-btn worked" @onclick="() => SetStatusForSelected(1)">Изработен</button>
-            <button class="act-btn on-work" @onclick="() => SetStatusForSelected(4)">На работа</button>
             <button class="act-btn paid" @onclick="() => SetStatusForSelected(2)">Платен</button>
+            <button class="act-btn on-work" @onclick="() => SetStatusForSelected(4)">На работа</button>
             <button class="act-btn done" @onclick="() => SetStatusForSelected(3)">Приключен</button>
             <button class="act-btn clear w-100" style="grid-column: span 2;" @onclick="() => SetStatusForSelected(0)">Изчисти</button>
         </div>
@@ -100,8 +100,8 @@
     .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .stat-card { padding: 12px; border-radius: 12px; display: flex; flex-direction: column; color: white; }
     
-    .payment { background: #ffeb3b; color: #000; } /* Жълто за плащане */
-    .receiving { background: #0d6efd; } /* Синьо за получаване */
+    .payment { background: #ffeb3b; color: #000; }
+    .receiving { background: #0d6efd; }
     
     .stat-label { font-size: 0.7rem; text-transform: uppercase; opacity: 0.9; }
     .stat-value { font-size: 1.2rem; font-weight: bold; margin: 2px 0; }
@@ -116,11 +116,14 @@
     .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.9rem; border: 1px solid #f0f0f0; }
     .empty { aspect-ratio: 1; }
 
+    /* Днес */
+    .is-today { font-weight: 900 !important; border: 2px solid #212529 !important; }
+
     /* Статуси в календара */
-    .status-worked { background: #ffeb3b; border-color: #fdd835; } /* Жълт */
-    .status-onwork { background: #f0f0f0; color: #666; } /* Светло сиво */
-    .status-paid { background: #0d6efd; color: white; } /* Син */
-    .status-finished { background: #28a745; color: white; } /* Зелен */
+    .status-worked { background: #ffeb3b; border-color: #fdd835; }
+    .status-onwork { background: #f0f0f0; color: #666; }
+    .status-paid { background: #0d6efd; color: white; }
+    .status-finished { background: #28a745; color: white; }
 
     .is-selected { outline: 3px solid #0d6efd; outline-offset: -3px; }
 
@@ -129,8 +132,8 @@
     .act-btn { padding: 15px 5px; border: none; border-radius: 10px; font-weight: bold; font-size: 0.85rem; }
     
     .worked { background: #ffeb3b; }
-    .on-work { background: #f0f0f0; color: #666; }
     .paid { background: #0d6efd; color: white; }
+    .on-work { background: #f0f0f0; color: #666; }
     .done { background: #28a745; color: white; }
     .clear { background: #f8d7da; color: #721c24; }
 
@@ -213,7 +216,6 @@
         finally { isLoading = false; StateHasChanged(); }
     }
 
-    // ЛОГИКА СУМИ (Изключен статус 4 "На работа")
     private decimal CalculateForPayment() => cloudDays.Count(d => d.StatusInt == 1) * ratePart;
     private decimal CalculateToReceive() => cloudDays.Count(d => (d.StatusInt == 1 || d.StatusInt == 2)) * rateFull;
 
