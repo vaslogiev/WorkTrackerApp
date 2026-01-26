@@ -373,9 +373,26 @@
     {
       var response = await SupabaseClient.From<DayEntry>().Get();
       cloudDays = response.Models.Select(d => { d.Date = d.Date.AddDays(1).Date; return d; }).ToList();
+
+      // Автоматична промяна на минали дни от "На работа" (4) към "Изработен" (1)
+      var expiredWorkDays = cloudDays.Where(d => d.StatusInt == 4 && d.Date.Date < DateTime.Today).ToList();
+
+      if (expiredWorkDays.Any())
+      {
+        foreach (var day in expiredWorkDays)
+        {
+          day.StatusInt = 1;
+        }
+        // Записваме промяната в базата веднага
+        await SupabaseClient.From<DayEntry>().Upsert(expiredWorkDays);
+      }
     }
     catch { }
-    finally { isLoading = false; StateHasChanged(); }
+    finally
+    {
+      isLoading = false;
+      StateHasChanged();
+    }
   }
 
   private decimal CalculateForPayment() => cloudDays.Count(d => d.StatusInt == 1) * ratePart;
