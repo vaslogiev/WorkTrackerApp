@@ -4,6 +4,7 @@
 @using Supabase.Interfaces
 @using Postgrest.Attributes
 @using Postgrest.Models
+@using Supabase.Gotrue
 @inject Supabase.Client SupabaseClient
 
 <div class="mobile-container">
@@ -275,9 +276,27 @@
 
   protected override async Task OnInitializedAsync()
   {
-    // Проверка за активна сесия
-    isAdmin = SupabaseClient.Auth.CurrentSession != null;
+    try
+    {
+      // 1. Първо проверяваме дали вече имаме активен потребител в паметта
+      if (SupabaseClient.Auth.CurrentUser != null)
+      {
+        isAdmin = true;
+      }
+      else
+      {
+        // 2. Ако няма, опитваме да освежим сесията от LocalStorage.
+        // Това е "магическият" метод, който възстановява логина след рефреш.
+        var session = await SupabaseClient.Auth.RefreshSession();
+        isAdmin = session != null;
+      }
+    }
+    catch
+    {
+      isAdmin = false;
+    }
 
+    // Зареждаме останалите данни
     await LoadRates();
     await LoadDays();
     SetupCalendar();

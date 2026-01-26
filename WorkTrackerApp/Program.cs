@@ -13,7 +13,11 @@ builder.Services.AddScoped(provider =>
     new Client(
         "https://rxvuylvhbsoepnclbaiw.supabase.co",
         "sb_publishable_XssO8nOqlteCn7eUpjOp1g_LaGRnrZH",
-        new SupabaseOptions { AutoConnectRealtime = true }
+        new SupabaseOptions 
+        {
+          AutoRefreshToken = true,
+          AutoConnectRealtime = true
+        }
     )
 );
 
