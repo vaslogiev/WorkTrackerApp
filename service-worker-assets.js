@@ -1,5 +1,5 @@
 self.assetsManifest = {
-  "version": "622LgPXG",
+  "version": "cowB68av",
   "assets": [
     {
       "hash": "sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
@@ -286,7 +286,7 @@ self.assetsManifest = {
       "url": "_framework/System.Runtime.Serialization.Primitives.wasm"
     },
     {
-      "hash": "sha256-SfbfL9fKx/14TVe6a8/AV12qvJydJIHPm6SmCkALO6E=",
+      "hash": "sha256-NCMXy750lhOGR1bqcBmXCC4OIvhfbcMBBCyRsiv2NxY=",
       "url": "_framework/System.Runtime.wasm"
     },
     {
@@ -354,11 +354,11 @@ self.assetsManifest = {
       "url": "_framework/Websocket.Client.wasm"
     },
     {
-      "hash": "sha256-i0NYJjSEjVp2zTRSUt8z390soVIFKELl8cdS/YKlcNw=",
+      "hash": "sha256-8ZNkUb4FPm/kXJmEFqkU8NUvVKP/zbOil6spdBHfkqo=",
       "url": "_framework/WorkTrackerApp.wasm"
     },
     {
-      "hash": "sha256-RhKZhDLU0jbgAhuSZ5AxocXWbhdHIdOWbq4rIVoSTrQ=",
+      "hash": "sha256-74qVlEQx08+bLubR6trwaKBKo9mw9Bm24tOlNw0oWZ8=",
       "url": "_framework/blazor.boot.json"
     },
     {
