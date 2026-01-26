@@ -1,11 +1,11 @@
 ﻿@page "/"
 @using System.Globalization
+@using System.Text.Json
 @using Supabase
-@using Supabase.Interfaces
 @using Postgrest.Attributes
 @using Postgrest.Models
-@using Supabase.Gotrue
 @inject Supabase.Client SupabaseClient
+@inject IJSRuntime JSRuntime
 
 <div class="mobile-container">
   @* 1. СЕКЦИЯ СУМИ - Видима само за ADMIN *@
@@ -14,12 +14,12 @@
     <div class="stats-grid mb-3">
       <div class="stat-card payment">
         <span class="stat-label">За плащане</span>
-        <span class="stat-value">@CalculateForPayment()</span>
+        <span class="stat-value">@CalculateForPayment() лв.</span>
         <span class="stat-sub">@CountWorked() дни</span>
       </div>
       <div class="stat-card receiving">
         <span class="stat-label">За получаване</span>
-        <span class="stat-value">@CalculateToReceive()</span>
+        <span class="stat-value">@CalculateToReceive() лв.</span>
         <span class="stat-sub">@CountNotFinished() дни</span>
       </div>
     </div>
@@ -58,7 +58,7 @@
       </div>
     </div>
 
-    @* 3. БУТОНИ ЗА ОТБЕЛЯЗВАНЕ *@
+    @* 3. БУТОНИ ЗА СТАТУС *@
     <div class="action-grid mb-3">
       <button class="act-btn worked" disabled="@(!isAdmin)" @onclick="() => SetStatusForSelected(1)">Изработен</button>
       <button class="act-btn paid" disabled="@(!isAdmin)" @onclick="() => SetStatusForSelected(2)">Платен</button>
@@ -74,33 +74,29 @@
       </button>
 
       <div class="settings-card p-3 mb-3">
-        <h6 class="fw-bold mb-3">Настройки на ставките</h6>
+        <h6 class="fw-bold mb-3">Настройки</h6>
         <div class="row g-2">
           <div class="col-6">
             <label class="x-small">Пълна ставка</label>
             <input type="number" class="form-control" @bind="rateFull">
           </div>
           <div class="col-6">
-            <label class="x-small">Частична ставка</label>
+            <label class="x-small">Частична</label>
             <input type="number" class="form-control" @bind="ratePart">
           </div>
         </div>
         <button class="btn btn-sm btn-outline-dark mt-3 w-100" @onclick="SaveRates">Запази ставките</button>
-        <button class="btn btn-link btn-sm w-100 mt-2 text-danger" @onclick="HandleLogout">Изход от Admin</button>
+        <button class="btn btn-link btn-sm w-100 mt-2 text-danger" @onclick="HandleLogout">Изход от профила</button>
       </div>
     }
     else
     {
-      <div class="login-section p-3 border-top mt-4">
+      <div class="login-section p-3 border rounded shadow-sm bg-white mt-4">
         <h6 class="text-center mb-3 text-muted">Вход за администратор</h6>
-        <div class="mb-2">
-          <input type="email" class="form-control" placeholder="Вашият имейл" @bind="loginEmail" />
-        </div>
-        <div class="mb-3">
-          <input type="password" class="form-control" placeholder="Парола" @bind="loginPass" />
-        </div>
+        <input type="email" class="form-control mb-2" placeholder="Имейл" @bind="loginEmail" />
+        <input type="password" class="form-control mb-3" placeholder="Парола" @bind="loginPass" />
         <button class="btn btn-dark w-100" @onclick="HandleLogin" disabled="@isLoggingIn">
-          @(isLoggingIn ? "Проверка..." : "Вход")
+          @(isLoggingIn ? "Влизане..." : "Вход")
         </button>
         @if (!string.IsNullOrEmpty(loginError))
         {
@@ -108,7 +104,6 @@
         }
       </div>
     }
-
     <p class="text-center mt-2 x-small text-muted">@syncMessage</p>
   }
 </div>
@@ -119,11 +114,12 @@
   }
 
   .mobile-container {
-    max-width: 100%;
+    max-width: 500px;
     margin: 0 auto;
     padding: 10px;
     background: #f8f9fa;
     min-height: 100vh;
+    font-family: sans-serif;
   }
 
   .stats-grid {
@@ -150,6 +146,17 @@
     color: white;
   }
 
+  .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    opacity: 0.9;
+  }
+
+  .stat-value {
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+
   .calendar-card {
     background: white;
     border-radius: 15px;
@@ -170,11 +177,14 @@
     border-radius: 8px;
     font-size: 0.9rem;
     border: 1px solid #f0f0f0;
+    transition: 0.2s;
   }
 
+  /* Днешният ден: Удебелен шрифт и черна рамка */
   .is-today {
     font-weight: 900 !important;
     border: 2px solid #212529 !important;
+    background: #fff;
   }
 
   .status-worked {
@@ -216,8 +226,8 @@
   }
 
     .act-btn:disabled {
-      opacity: 0.6;
-      grayscale: 1;
+      opacity: 0.5;
+      filter: grayscale(0.5);
     }
 
   .worked {
@@ -244,9 +254,10 @@
     color: #721c24;
   }
 
-  .login-section {
-    background: #fff;
-    border-radius: 15px 15px 0 0;
+  .x-small {
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: #666;
   }
 </style>
 
@@ -270,67 +281,56 @@
   private DateTime viewDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
   private int OffsetDays;
   private decimal rateFull = 140, ratePart = 90;
-
   private bool isLoading = true, isSyncing = false, isAdmin = false, isLoggingIn = false;
   private string syncMessage = "", loginEmail = "", loginPass = "", loginError = "";
 
-  protected override async Task OnInitializedAsync()
+  // ТОВА ВЪЗСТАНОВЯВА СЕСИЯТА СЛЕД РЕФРЕШ
+  protected override async Task OnAfterRenderAsync(bool firstRender)
   {
-    try
+    if (firstRender)
     {
-      // 1. Първо проверяваме дали вече имаме активен потребител в паметта
-      if (SupabaseClient.Auth.CurrentUser != null)
+      await Task.Delay(100); // Малко изчакване за сигурност
+      var savedSession = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "sb_session");
+      if (!string.IsNullOrEmpty(savedSession))
       {
         isAdmin = true;
+        await LoadRates();
+        await LoadDays();
+        StateHasChanged();
       }
       else
       {
-        // 2. Ако няма, опитваме да освежим сесията от LocalStorage.
-        // Това е "магическият" метод, който възстановява логина след рефреш.
-        var session = await SupabaseClient.Auth.RefreshSession();
-        isAdmin = session != null;
+        await LoadDays(); // Зареждаме като Guest
       }
+      isLoading = false;
+      StateHasChanged();
     }
-    catch
-    {
-      isAdmin = false;
-    }
-
-    // Зареждаме останалите данни
-    await LoadRates();
-    await LoadDays();
-    SetupCalendar();
   }
+
+  protected override void OnInitialized() => SetupCalendar();
 
   private async Task HandleLogin()
   {
-    if (string.IsNullOrEmpty(loginEmail) || string.IsNullOrEmpty(loginPass)) return;
-    isLoggingIn = true;
-    loginError = "";
+    isLoggingIn = true; loginError = "";
     try
     {
       var session = await SupabaseClient.Auth.SignIn(loginEmail, loginPass);
       if (session != null)
       {
         isAdmin = true;
-        loginEmail = ""; loginPass = "";
+        // Записваме "знаменце" в браузъра
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "sb_session", "active");
+        await LoadRates(); await LoadDays();
       }
     }
-    catch (Exception ex)
-    {
-      // Ако не е потвърден имейла, Supabase ще хвърли грешка тук
-      loginError = "Грешен имейл, парола или непотвърден акаунт!";
-    }
-    finally
-    {
-      isLoggingIn = false;
-      StateHasChanged();
-    }
+    catch { loginError = "Грешен имейл или парола!"; }
+    finally { isLoggingIn = false; StateHasChanged(); }
   }
 
   private async Task HandleLogout()
   {
     await SupabaseClient.Auth.SignOut();
+    await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "sb_session");
     isAdmin = false;
     StateHasChanged();
   }
@@ -358,19 +358,17 @@
 
   private async Task SaveRates()
   {
-    if (!isAdmin) return;
     try
     {
       await SupabaseClient.From<SettingEntry>().Upsert(new SettingEntry { Key = "rate_full", Value = rateFull });
       await SupabaseClient.From<SettingEntry>().Upsert(new SettingEntry { Key = "rate_part", Value = ratePart });
-      syncMessage = "Ставките са запазени!";
+      syncMessage = "Запазено!";
     }
-    catch { syncMessage = "Грешка при запис!"; }
+    catch { syncMessage = "Грешка!"; }
   }
 
   private async Task LoadDays()
   {
-    isLoading = true;
     try
     {
       var response = await SupabaseClient.From<DayEntry>().Get();
@@ -401,18 +399,16 @@
       }
     }
     SelectedDates.Clear();
-    StateHasChanged();
   }
 
   private async Task SyncDays()
   {
-    if (!isAdmin) return;
-    isSyncing = true;
+    isSyncing = true; syncMessage = "Синхронизиране...";
     try
     {
       await SupabaseClient.From<DayEntry>().Filter("date", Postgrest.Constants.Operator.NotEqual, "1900-01-01").Delete();
       if (cloudDays.Any()) await SupabaseClient.From<DayEntry>().Insert(cloudDays);
-      syncMessage = "Синхронизирано!";
+      syncMessage = "Успешно!";
     }
     catch { syncMessage = "Грешка!"; }
     finally { isSyncing = false; StateHasChanged(); }
